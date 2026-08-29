@@ -74,4 +74,30 @@ Service container ports:
 - Service A: `8080`
 - Service B: `8000`
 
+Service B runtime note:
+- Distroless Python (`gcr.io/distroless/python3:3.12`) was considered and preferred for minimal attack surface.
+- In environments where the distroless manifest is not available, this repository falls back to `python:3.12-slim` as a minimal, compatible runtime. Build tools and dependencies remain isolated in the builder stage at `/install` and are copied into the final image only as needed.
+
+Images built locally (after verification):
+- `devops-service-a:step04` — 204MB
+- `devops-service-b:step04` — 159MB
+
+Example Docker build and run commands:
+
+```bash
+# From repository root
+docker build -f docker/service-a/Dockerfile -t devops-service-a:step04 docker/service-a
+docker run --rm -p 8080:8080 --name t-service-a devops-service-a:step04
+
+docker build -f docker/service-b/Dockerfile -t devops-service-b:step04 docker/service-b
+docker run --rm -p 8000:8000 --name t-service-b devops-service-b:step04
+```
+
+Multi-stage build explanation:
+- The builder stage installs dependencies and compiles or prepares artifacts. The final runtime stage copies only the minimal runtime artifacts needed to run the app (application code and installed packages), keeping image size and attack surface small.
+
+Build vs runtime image:
+- Builder: contains package managers and build tools (`npm`, `pip`) and the full dependency installation step.
+- Runtime: contains only the runtime interpreter and the application artifacts copied from the builder stage; runs as non-root `UID 10001` and exposes the runtime port.
+
 
