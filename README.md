@@ -11,7 +11,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-01 Project structure setup
 - [x] STEP-02 Service A implementation
 - [x] STEP-03 Service B implementation
-- [ ] STEP-04 Docker containerization
+- [x] STEP-04 Docker containerization
 
 ## Service A (Node.js + Express)
 
@@ -59,4 +59,19 @@ curl http://127.0.0.1:8000/api/v2/health
 curl http://127.0.0.1:8000/api/v2/orders
 curl http://127.0.0.1:8000/api/v2/error
 ```
+
+## STEP-04 Docker containerization notes
+
+This step adds multi-stage Dockerfiles for both services and follows production-oriented best practices:
+
+- Multi-stage builds: build dependencies in a builder image, copy only runtime artifacts into a minimal runtime image.
+- Build vs runtime: the builder contains tooling (npm, pip, compilers), the final image is minimal/distroless.
+- Minimal/distroless runtime: reduces attack surface and removes shells and package managers from runtime images.
+- Non-root execution: final containers are configured to run as UID 10001 (numeric user) to avoid running as root.
+- Docker layer caching: package manifests are copied before application code to improve cache reuse during iterative builds.
+
+Service container ports:
+- Service A: `8080`
+- Service B: `8000`
+
 
