@@ -11,9 +11,13 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 # Copy application files
 COPY main.py ./
 
-# Final stage: use Distroless Python runtime for minimal attack surface
-FROM gcr.io/distroless/python3:3.12
+# Final stage: use a minimal slim Python runtime as a fallback when distroless
+# manifests are not available in the environment (keeps image small and usable).
+FROM python:3.12-slim
 WORKDIR /app
+
+# Ensure Python outputs logs immediately
+ENV PYTHONUNBUFFERED=1
 
 # Copy installed packages from builder into the final image's site-packages
 COPY --from=builder /install /usr/local
@@ -24,7 +28,7 @@ COPY --from=builder /app /app
 # Expose application port
 EXPOSE 8000
 
-# Run as non-root numeric user 10001 (distroless has no user creation tools)
+# Run as non-root numeric user 10001
 USER 10001
 
 # Start the application using Uvicorn. Bind to 0.0.0.0 for container networking.

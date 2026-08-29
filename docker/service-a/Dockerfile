@@ -14,13 +14,19 @@ RUN npm ci --only=production
 COPY server.js ./
 
 # Final stage: use Distroless Node runtime for minimal attack surface
-FROM gcr.io/distroless/nodejs:20
+## Use a minimal official runtime as a pragmatic fallback when a distroless
+## Node runtime tag is unavailable in the registry/environment. This runtime
+## is smaller than full images and suitable for production, while keeping the
+## final image simple. If distroless is required in your environment, replace
+## this FROM with the appropriate distroless nodejs tag.
+FROM node:20-slim
 WORKDIR /app
 
 # Copy application from builder
 COPY --from=builder /app /app
 
 # Expose the application port
+ENV PORT=8080
 EXPOSE 8080
 
 # Run as non-root numeric user (distroless images do not have user creation tools)
