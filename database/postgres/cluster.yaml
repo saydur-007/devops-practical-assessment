@@ -1,0 +1,15 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-ha
+spec:
+  instances: 2
+  storage:
+    size: 1Gi
+  managed:
+    roles:
+      - name: appuser
+        login: true
+        createdb: true
+        passwordSecret:
+          name: postgres-app-credentials

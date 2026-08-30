@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: appdb
+spec:
+  name: appdb
+  owner: appuser
+  cluster:
+    name: postgres-ha
