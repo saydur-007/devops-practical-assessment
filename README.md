@@ -102,6 +102,12 @@ kubectl get nodes -o wide
 kubectl config current-context
 ```
 
+### Cluster Verification
+
+The following screenshot shows the cluster verification output (`kubectl get nodes -o wide`) used during validation:
+
+![3-Node Kind Cluster Verification](docs/screenshots/step-05-kind-cluster.png)
+
 Service B runtime note:
 - Distroless Python (`gcr.io/distroless/python3:3.12`) was considered and preferred for minimal attack surface.
 - In environments where the distroless manifest is not available, this repository falls back to `python:3.12-slim` as a minimal, compatible runtime. Build tools and dependencies remain isolated in the builder stage at `/install` and are copied into the final image only as needed.
