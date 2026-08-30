@@ -4,20 +4,25 @@ metadata:
   name: service-b
   labels:
     app: service-b
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: service-b
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
+
   template:
     metadata:
       labels:
         app: service-b
+
     spec:
       affinity:
         podAntiAffinity:
@@ -26,18 +31,32 @@ spec:
                 matchLabels:
                   app: service-b
               topologyKey: kubernetes.io/hostname
+
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
                   - key: node-role.kubernetes.io/control-plane
                     operator: DoesNotExist
+
       containers:
         - name: service-b
           image: devops-service-b:step04
           imagePullPolicy: IfNotPresent
+
           ports:
             - containerPort: 8000
+              protocol: TCP
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
           resources:
             requests:
               cpu: "100m"
@@ -45,6 +64,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+
           readinessProbe:
             httpGet:
               path: /api/v2/health
@@ -53,6 +73,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+
           livenessProbe:
             httpGet:
               path: /api/v2/health
@@ -61,3 +82,11 @@ spec:
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 3
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
