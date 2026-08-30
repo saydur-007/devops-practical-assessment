@@ -3,7 +3,7 @@ SHELL := /bin/bash
 CLUSTER_NAME := devops-assessment
 KIND_CONFIG := k8s/kind-config.yaml
 
-.PHONY: help cluster apps ingress network databases logging monitoring verify all
+.PHONY: help cluster apps ingress network databases logging monitoring verify all bootstrap
 
 help:
 	@echo "Targets:"
@@ -16,6 +16,7 @@ help:
 	@echo "  make monitoring  - Deploy Prometheus + Alertmanager"
 	@echo "  make verify      - Show deployment health"
 	@echo "  make all         - Provision and deploy stack"
+	@echo "  make bootstrap   - Provision and deploy the stack"
 
 cluster:
 	@if kind get clusters | grep -qx "$(CLUSTER_NAME)"; then \
@@ -69,3 +70,6 @@ verify:
 	kubectl get daemonset fluent-bit || true
 
 all: cluster apps ingress network databases logging monitoring verify
+
+.PHONY: bootstrap
+bootstrap: all
