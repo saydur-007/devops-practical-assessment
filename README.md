@@ -14,6 +14,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-04 Docker containerization
 - [x] STEP-05 Local Kubernetes cluster setup
 - [x] STEP-06 Kubernetes application deployment
+- [x] STEP-07 Kubernetes horizontal pod autoscaling
 
 ## Service A (Node.js + Express)
 
@@ -178,3 +179,30 @@ Build vs runtime image:
 The following output verifies that both microservices are running with two healthy replicas distributed across the Kubernetes worker nodes.
 
 ![Kubernetes Application Deployment](docs/screenshots/step-06-kubernetes-deployment.png)
+
+## STEP-07 Kubernetes Horizontal Pod Autoscaling
+
+Horizontal Pod Autoscaling (HPA) is configured for both microservices using the Kubernetes `autoscaling/v2` API.
+
+### HPA Configuration
+
+- Service A: minimum 2 replicas, maximum 6 replicas
+- Service B: minimum 2 replicas, maximum 6 replicas
+- CPU utilization target: 70%
+- Memory utilization target: 75%
+- Metrics Server provides CPU and memory metrics to the HPA
+- Scale-down stabilization window: 300 seconds to prevent rapid scaling fluctuations
+
+### Autoscaling Validation
+
+Metrics Server was configured and verified using `kubectl top`.
+
+During load testing, Service A exceeded the 70% CPU target and the HPA increased the desired replica count up to 6.
+
+The local kind cluster contains two worker nodes with strict required pod anti-affinity. This limits the number of Service A replicas that can remain scheduled simultaneously. The original required anti-affinity configuration was retained after testing.
+
+### HPA Verification
+
+The following output verifies resource metrics and Horizontal Pod Autoscaler configuration for both microservices.
+
+![Kubernetes HPA Verification](docs/screenshots/step-07-hpa-verification.png)
