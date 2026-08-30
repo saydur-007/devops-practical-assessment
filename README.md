@@ -378,3 +378,7 @@ Automated database backups are configured as Kubernetes CronJobs scheduled daily
 ### Monitoring and Alert Verification
 
 ![Monitoring and Alert Verification](docs/screenshots/step-14-prometheus-alerting.png)
+
+## STEP-15 CI/CD Pipeline
+
+GitHub Actions validates Kubernetes manifests using kubeconform, builds Service A and Service B container images tagged with the Git commit SHA, and scans both images using Trivy for HIGH and CRITICAL vulnerabilities.
