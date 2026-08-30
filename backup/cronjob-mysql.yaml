@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-mysql
+  namespace: default
+  labels:
+    app: backup-mysql
+spec:
+  schedule: "0 2 * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: backup-work
+              emptyDir: {}
+          initContainers:
+            - name: mysql-dump
+              image: mysql:8.4
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - secretRef:
+                    name: mysql-credentials
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  ts="$(date -u +%Y%m%d-%H%M%S)"
+                  mysqldump --no-tablespaces -h mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" > "/backup/mysql-appdb-${ts}.sql"
+                  gzip "/backup/mysql-appdb-${ts}.sql"
+              volumeMounts:
+                - name: backup-work
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: minio/mc:latest
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - secretRef:
+                    name: minio-credentials
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+                  ls /backup/mysql-appdb-*.sql.gz >/dev/null
+                  mc cp /backup/mysql-appdb-*.sql.gz local/db-backups/mysql/
+              volumeMounts:
+                - name: backup-work
+                  mountPath: /backup

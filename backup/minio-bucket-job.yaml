@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-create-db-backups-bucket
+  namespace: default
+  labels:
+    app: minio
+spec:
+  template:
+    metadata:
+      labels:
+        app: minio-bucket-job
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: minio-credentials
+          command:
+            - sh
+            - -c
+            - |
+              mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+              mc mb --ignore-existing local/db-backups
+              mc ls local/db-backups

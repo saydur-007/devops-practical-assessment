@@ -1,0 +1,77 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-postgres
+  namespace: default
+  labels:
+    app: backup-postgres
+spec:
+  schedule: "0 2 * * *"
+  timeZone: "Etc/UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: backup-postgres
+        spec:
+          restartPolicy: Never
+          volumes:
+            - name: backup-work
+              emptyDir: {}
+          initContainers:
+            - name: pg-dump
+              image: ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: PGHOST
+                  value: postgres-ha-rw
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-app-credentials
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-app-credentials
+                      key: password
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-app-credentials
+                      key: database
+              command:
+                - bash
+                - -ec
+                - |
+                  ts="$(date -u +%Y%m%d-%H%M%S)"
+                  pg_dump --format=plain --no-owner --no-privileges -f "/backup/postgres-appdb-${ts}.sql"
+                  gzip "/backup/postgres-appdb-${ts}.sql"
+              volumeMounts:
+                - name: backup-work
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: minio/mc:latest
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - secretRef:
+                    name: minio-credentials
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+                  ls /backup/postgres-appdb-*.sql.gz >/dev/null
+                  mc cp /backup/postgres-appdb-*.sql.gz local/db-backups/postgres/
+              volumeMounts:
+                - name: backup-work
+                  mountPath: /backup

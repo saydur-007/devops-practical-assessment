@@ -19,6 +19,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-09 Kubernetes Zero-Trust NetworkPolicy
 - [x] STEP-10 PostgreSQL High Availability
 - [x] STEP-11 MySQL and SQL Server Persistent Workloads
+- [x] STEP-12 Automated Database Backup and S3-Compatible Storage
 
 ## Service A (Node.js + Express)
 
@@ -325,3 +326,21 @@ Cross-database persistence is implemented with Kubernetes StatefulSet manifests 
 The following output verifies MySQL and SQL Server stateful workloads, persistent volume bindings, and database health.
 
 ![Cross-Database Persistence Verification](docs/screenshots/step-11-cross-database-persistence.png)
+
+## STEP-12 Automated Database Backup and S3-Compatible Storage
+
+Automated database backups are configured as Kubernetes CronJobs scheduled daily at `02:00 UTC`.
+
+- S3-compatible storage: local MinIO StatefulSet with persistent storage
+- Bucket: `db-backups`
+- PostgreSQL: `pg_dump` from `postgres-ha-rw`, compressed with gzip
+- MySQL: `mysqldump` from `mysql`, compressed with gzip
+- SQL Server: native SQL Server `.bak` backup created with `sqlcmd`, compressed with gzip
+- Upload client: MinIO `mc`
+- Credentials: database and MinIO credentials are injected from Kubernetes Secrets only
+- Manual backup Jobs were created from each CronJob and verified
+- Backup artifacts were uploaded to the `db-backups` bucket
+
+### Automated Backup Verification
+
+![Automated Database Backup Verification](docs/screenshots/step-12-backup-verification.png)
