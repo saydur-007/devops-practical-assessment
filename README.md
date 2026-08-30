@@ -18,6 +18,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-08 Kubernetes Ingress and TLS routing
 - [x] STEP-09 Kubernetes Zero-Trust NetworkPolicy
 - [x] STEP-10 PostgreSQL High Availability
+- [x] STEP-11 MySQL and SQL Server Persistent Workloads
 
 ## Service A (Node.js + Express)
 
@@ -289,3 +290,38 @@ PostgreSQL HA is implemented using CloudNativePG.
 The following output verifies PostgreSQL high availability, replication, persistent storage, failover, and database network isolation.
 
 ![PostgreSQL HA Verification](docs/screenshots/step-10-postgresql-ha-verification.png)
+
+## STEP-11 MySQL and SQL Server Persistent Workloads
+
+Cross-database persistence is implemented with Kubernetes StatefulSet manifests for MySQL and Microsoft SQL Server.
+
+- MySQL:
+	- StatefulSet: `mysql`
+	- Service: `mysql` on TCP/3306
+	- Image: `mysql:8.4`
+	- Persistent PVC: `mysql-data-mysql-0`, `1Gi`, StorageClass `standard`
+	- Credentials: injected from Kubernetes Secret `mysql-credentials`
+	- Persistence test: row in `step11_persistence_test` existed before and after deleting only `mysql-0`
+- SQL Server:
+	- StatefulSet: `mssql`
+	- Service: `mssql` on TCP/1433
+	- Image: `mcr.microsoft.com/mssql/server:2022-latest`
+	- Persistent PVC: `mssql-data-mssql-0`, `2Gi`, StorageClass `standard`
+	- SA credential: injected from Kubernetes Secret `sqlserver-credentials`
+	- Persistence test: row in `step11_persistence_test` existed before and after deleting only `mssql-0`
+- Storage:
+	- StorageClass: `standard`
+	- Provisioner: `rancher.io/local-path`
+	- Reclaim policy: `Delete`
+	- Volume binding mode: `WaitForFirstConsumer`
+	- Volume expansion: not advertised; `allowVolumeExpansion: true` is absent/false
+	- Production recommendation: use an expandable CSI-backed StorageClass for volume expansion support
+- Security:
+	- Generated database passwords exist only in Kubernetes Secrets
+	- No plaintext database passwords or Secret manifests are committed to Git
+
+### Cross-Database Persistence Verification
+
+The following output verifies MySQL and SQL Server stateful workloads, persistent volume bindings, and database health.
+
+![Cross-Database Persistence Verification](docs/screenshots/step-11-cross-database-persistence.png)
