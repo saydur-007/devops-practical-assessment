@@ -1409,6 +1409,15 @@ Kustomize
 ├── .github/
 │   └── workflows/
 │
+├── ci/
+│   └── README.md
+│
+├── helm/
+│   └── README.md
+│
+├── scripts/
+│   └── README.md
+│
 ├── backup/
 │
 ├── database/
@@ -1591,3 +1600,19 @@ Makefile Deployment Automation
 ```
 
 All major assessment components have been implemented, tested, documented, and verified.
+---
+
+# GitOps Delivery Choice
+
+The assessment supports either **Helm Charts or Kustomize overlays** for environment-specific Kubernetes delivery.
+
+This implementation uses **Kustomize** as the primary GitOps configuration mechanism:
+
+- `k8s/base/` contains reusable Kubernetes resources.
+- `k8s/overlays/staging/` contains staging-specific configuration.
+- `k8s/overlays/production/` contains production-specific configuration.
+- `helm/` is retained as part of the required repository structure and documents the option for future Helm packaging.
+- `ci/` documents the CI/CD implementation, while the active GitHub Actions workflow is stored under `.github/workflows/`.
+- `scripts/` documents deployment automation provided through the root `Makefile`.
+
+Kustomize was selected instead of duplicating the same deployment configuration in both Helm and Kustomize.
