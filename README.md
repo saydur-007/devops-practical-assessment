@@ -21,7 +21,10 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-11 MySQL and SQL Server Persistent Workloads
 - [x] STEP-12 Automated Database Backup and S3-Compatible Storage
 - [x] STEP-13 Centralized Logging with Fluent Bit and Loki
-- [x] STEP-14 Prometheus monitoring and alerting
+- [x] STEP-14 Prometheus Monitoring and Alerting
+- [x] STEP-15 GitHub Actions CI/CD Pipeline
+- [x] STEP-16 Kustomize Staging and Production Overlays
+- [x] STEP-17 One-Click Deployment Automation
 
 ## Service A (Node.js + Express)
 
