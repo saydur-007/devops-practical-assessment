@@ -1,10 +1,54 @@
 # DevOps Practical Assessment
 
-A small polyglot microservices sample used for DevOps practical exercises.
+A production-oriented DevOps practical assessment demonstrating containerization, Kubernetes orchestration, high-availability databases, persistent storage, automated backups, centralized logging, monitoring and alerting, CI/CD, environment overlays, security hardening, and deployment automation.
+
+---
+
+## Architecture Overview
+
+The following architecture represents the complete platform implemented in this assessment.
+
+![DevOps Practical Assessment Architecture](docs/architecture/devops-architecture-overview.png)
+
+### Architecture Highlights
+
+- **Ingress:** NGINX Ingress Controller with TLS termination
+- **Microservices:** Node.js/Express and Python/FastAPI
+- **Scalability:** HPA using CPU and memory utilization
+- **High Availability:** PostgreSQL primary/replica using CloudNativePG
+- **Persistence:** PostgreSQL, MySQL, and SQL Server persistent storage
+- **Security:** Zero-Trust NetworkPolicies and hardened containers
+- **Backups:** Daily automated database backups to MinIO
+- **Logging:** Fluent Bit and Loki
+- **Monitoring:** Prometheus, kube-state-metrics, and Alertmanager
+- **CI/CD:** GitHub Actions with validation and vulnerability scanning
+- **Environments:** Kustomize staging and production overlays
+- **Automation:** Makefile-based deployment and verification
+
+---
 
 ## Short Description
 
-This repository contains two simple services to exercise containerization, observability, and deployment workflows.
+This repository contains two polyglot microservices and the infrastructure required to run them on Kubernetes.
+
+| Component | Technology |
+|---|---|
+| Service A | Node.js + Express |
+| Service B | Python + FastAPI |
+| Container Runtime | Docker |
+| Kubernetes | kind |
+| Ingress | NGINX Ingress |
+| PostgreSQL HA | CloudNativePG |
+| Databases | PostgreSQL, MySQL, Microsoft SQL Server |
+| Object Storage | MinIO |
+| Logging | Fluent Bit + Loki |
+| Monitoring | Prometheus + Alertmanager |
+| Kubernetes Metrics | kube-state-metrics |
+| CI/CD | GitHub Actions |
+| Environment Management | Kustomize |
+| Automation | Makefile |
+
+---
 
 ## Current Progress
 
@@ -25,47 +69,117 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-15 GitHub Actions CI/CD Pipeline
 - [x] STEP-16 Kustomize Staging and Production Overlays
 - [x] STEP-17 One-Click Deployment Automation
+- [x] Kubernetes workload security hardening
 
-## Service A (Node.js + Express)
+---
 
-- Location: docker/service-a
-- Tech: Node.js, Express
-- Endpoints:
-	- GET /api/v1/health -> {"status":"healthy","service":"service-a"}
-	- GET /api/v1/users -> returns sample users
-	- GET /api/v1/error -> returns HTTP 500 (for alert testing)
+# Service A — Node.js + Express
 
-## Service B (Python + FastAPI)
+**Location:**
 
-- Location: docker/service-b
-- Tech: Python 3, FastAPI, Uvicorn
-- Endpoints:
-	- GET /api/v2/health -> {"status":"healthy","service":"service-b"}
-	- GET /api/v2/orders -> returns sample orders
-	- GET /api/v2/error -> returns HTTP 500 (for alert testing)
+```text
+docker/service-a
+```
 
-## How to run Service B locally (developer)
+**Technology:**
 
-1. Create a Python virtual environment and activate it:
+```text
+Node.js
+Express
+```
+
+### Endpoints
+
+```text
+GET /api/v1/health
+GET /api/v1/users
+GET /api/v1/error
+```
+
+Health response:
+
+```json
+{
+  "status": "healthy",
+  "service": "service-a"
+}
+```
+
+`/api/v1/error` intentionally returns HTTP 500 for monitoring and alert testing.
+
+Runtime port:
+
+```text
+8080
+```
+
+---
+
+# Service B — Python + FastAPI
+
+**Location:**
+
+```text
+docker/service-b
+```
+
+**Technology:**
+
+```text
+Python 3
+FastAPI
+Uvicorn
+```
+
+### Endpoints
+
+```text
+GET /api/v2/health
+GET /api/v2/orders
+GET /api/v2/error
+```
+
+Health response:
+
+```json
+{
+  "status": "healthy",
+  "service": "service-b"
+}
+```
+
+`/api/v2/error` intentionally returns HTTP 500 for monitoring and alert testing.
+
+Runtime port:
+
+```text
+8000
+```
+
+### Run Service B Locally
+
+Create and activate a virtual environment:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-2. Install dependencies:
+Install dependencies:
 
 ```bash
 pip install -r docker/service-b/requirements.txt
 ```
 
-3. Start the server:
+Start the application:
 
 ```bash
-uvicorn docker.service-b.main:app --host 127.0.0.1 --port 8000
+uvicorn docker.service-b.main:app \
+  --host 127.0.0.1 \
+  --port 8000
 ```
 
-4. Test endpoints:
+Test:
 
 ```bash
 curl http://127.0.0.1:8000/api/v2/health
@@ -73,40 +187,85 @@ curl http://127.0.0.1:8000/api/v2/orders
 curl http://127.0.0.1:8000/api/v2/error
 ```
 
-## STEP-04 Docker containerization notes
+---
 
-This step adds multi-stage Dockerfiles for both services and follows production-oriented best practices:
+# STEP-04 — Docker Containerization
 
-- Multi-stage builds: build dependencies in a builder image, copy only runtime artifacts into a minimal runtime image.
-- Build vs runtime: the builder contains tooling (npm, pip, compilers), the final image is minimal/distroless.
-- Minimal/distroless runtime: reduces attack surface and removes shells and package managers from runtime images.
-- Non-root execution: final containers are configured to run as UID 10001 (numeric user) to avoid running as root.
-- Docker layer caching: package manifests are copied before application code to improve cache reuse during iterative builds.
+Both services use multi-stage Docker builds following production-oriented containerization practices.
 
-Service container ports:
-- Service A: `8080`
-- Service B: `8000`
+### Docker Features
 
-## STEP-05 Local Kubernetes cluster (kind)
+- Multi-stage builds
+- Minimal runtime images
+- Non-root execution
+- UID `10001`
+- Docker layer caching
+- Build dependencies separated from runtime
+- Reduced runtime attack surface
 
-- Cluster name: `devops-assessment`
-- Node topology: 1 control-plane, 2 workers
-- Host port mappings configured on control-plane node: host `80` -> container `80`, host `443` -> container `443`
-- The cluster is local (kind) and intended for assessment validation; services are not deployed by default.
+Service A and Service B build dependencies are installed in builder stages.
 
-Create the cluster:
+Only required runtime artifacts are copied into the final image.
 
-```bash
-kind create cluster --name devops-assessment --config k8s/kind-config.yaml
-```
+Service B uses `python:3.12-slim` where the intended distroless Python image is unavailable.
 
-Delete the cluster:
+### Build Service A
 
 ```bash
-kind delete cluster --name devops-assessment
+docker build \
+  -f docker/service-a/Dockerfile \
+  -t devops-service-a:step04 \
+  docker/service-a
 ```
 
-Validation commands:
+### Build Service B
+
+```bash
+docker build \
+  -f docker/service-b/Dockerfile \
+  -t devops-service-b:step04 \
+  docker/service-b
+```
+
+Validated local image sizes:
+
+```text
+Service A: approximately 204 MB
+Service B: approximately 159 MB
+```
+
+---
+
+# STEP-05 — Local Kubernetes Cluster
+
+A three-node Kubernetes cluster is created using kind.
+
+### Cluster Configuration
+
+```text
+Cluster Name: devops-assessment
+
+Nodes:
+1 Control Plane
+2 Worker Nodes
+```
+
+Host port mappings:
+
+```text
+80  -> HTTP
+443 -> HTTPS
+```
+
+### Create Cluster
+
+```bash
+kind create cluster \
+  --name devops-assessment \
+  --config k8s/kind-config.yaml
+```
+
+### Verify
 
 ```bash
 kubectl cluster-info --context kind-devops-assessment
@@ -114,35 +273,54 @@ kubectl get nodes -o wide
 kubectl config current-context
 ```
 
-### Cluster Verification
+### Delete Cluster
 
-The following screenshot shows the cluster verification output (`kubectl get nodes -o wide`) used during validation:
+```bash
+kind delete cluster --name devops-assessment
+```
+
+### Cluster Verification
 
 ![3-Node Kind Cluster Verification](docs/screenshots/step-05-kind-cluster.png)
 
-## STEP-06 Kubernetes application deployment
+---
 
-- Namespace: `default`
-- Deployments: `service-a`, `service-b`
-- Replicas: 2 each
-- Resource requests: `cpu: 100m`, `memory: 128Mi`
-- Resource limits: `cpu: 500m`, `memory: 256Mi`
-- Service A health probe: `/api/v1/health`
-- Service B health probe: `/api/v2/health`
-- Rolling update: `maxSurge: 25%`, `maxUnavailable: 0`
-- Pod anti-affinity: `requiredDuringSchedulingIgnoredDuringExecution`
-- Topology key: `kubernetes.io/hostname`
+# STEP-06 — Kubernetes Application Deployment
 
-Apply manifests (from repo root):
+Both microservices are deployed as Kubernetes Deployments.
+
+| Setting | Service A | Service B |
+|---|---:|---:|
+| Replicas | 2 | 2 |
+| CPU Request | 100m | 100m |
+| Memory Request | 128Mi | 128Mi |
+| CPU Limit | 500m | 500m |
+| Memory Limit | 256Mi | 256Mi |
+| Health Endpoint | `/api/v1/health` | `/api/v2/health` |
+| maxSurge | 25% | 25% |
+| maxUnavailable | 0 | 0 |
+
+Both deployments include:
+
+- Resource requests
+- Resource limits
+- Readiness probes
+- Liveness probes
+- RollingUpdate strategy
+- Required pod anti-affinity
+- `kubernetes.io/hostname` topology distribution
+
+### Apply Applications
 
 ```bash
 kubectl apply -f k8s/base/service-a/deployment.yaml
 kubectl apply -f k8s/base/service-a/service.yaml
+
 kubectl apply -f k8s/base/service-b/deployment.yaml
 kubectl apply -f k8s/base/service-b/service.yaml
 ```
 
-Verify deployments and pods:
+### Verify
 
 ```bash
 kubectl get deployments
@@ -150,261 +328,1266 @@ kubectl get pods -o wide
 kubectl get svc
 ```
 
-Port-forward for testing (run in separate terminals):
-
-```bash
-# Service A
-kubectl port-forward svc/service-a 8080:8080 --address 127.0.0.1
-# Service B
-kubectl port-forward svc/service-b 8000:8000 --address 127.0.0.1
-```
-
-Service B runtime note:
-- Distroless Python (`gcr.io/distroless/python3:3.12`) was considered and preferred for minimal attack surface.
-- In environments where the distroless manifest is not available, this repository falls back to `python:3.12-slim` as a minimal, compatible runtime. Build tools and dependencies remain isolated in the builder stage at `/install` and are copied into the final image only as needed.
-
-Images built locally (after verification):
-- `devops-service-a:step04` — 204MB
-- `devops-service-b:step04` — 159MB
-
-Example Docker build and run commands:
-
-```bash
-# From repository root
-docker build -f docker/service-a/Dockerfile -t devops-service-a:step04 docker/service-a
-docker run --rm -p 8080:8080 --name t-service-a devops-service-a:step04
-
-docker build -f docker/service-b/Dockerfile -t devops-service-b:step04 docker/service-b
-docker run --rm -p 8000:8000 --name t-service-b devops-service-b:step04
-```
-
-Multi-stage build explanation:
-- The builder stage installs dependencies and compiles or prepares artifacts. The final runtime stage copies only the minimal runtime artifacts needed to run the app (application code and installed packages), keeping image size and attack surface small.
-
-Build vs runtime image:
-- Builder: contains package managers and build tools (`npm`, `pip`) and the full dependency installation step.
-- Runtime: contains only the runtime interpreter and the application artifacts copied from the builder stage; runs as non-root `UID 10001` and exposes the runtime port.
 ### Deployment Verification
-
-The following output verifies that both microservices are running with two healthy replicas distributed across the Kubernetes worker nodes.
 
 ![Kubernetes Application Deployment](docs/screenshots/step-06-kubernetes-deployment.png)
 
-## STEP-07 Kubernetes Horizontal Pod Autoscaling
+---
 
-Horizontal Pod Autoscaling (HPA) is configured for both microservices using the Kubernetes `autoscaling/v2` API.
+## Kubernetes Workload Security Hardening
+
+Both application containers enforce a restrictive Kubernetes security context.
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+```
+
+Because the root filesystem is read-only, a temporary writable filesystem is provided at `/tmp` using `emptyDir`.
+
+```yaml
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
+
+volumes:
+  - name: tmp
+    emptyDir: {}
+```
+
+### Verify Security Context
+
+```bash
+kubectl get deployment service-a \
+  -o jsonpath='{.spec.template.spec.containers[0].securityContext}{"\n"}'
+
+kubectl get deployment service-b \
+  -o jsonpath='{.spec.template.spec.containers[0].securityContext}{"\n"}'
+```
+
+Expected controls:
+
+```text
+runAsNonRoot: true
+runAsUser: 10001
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities.drop: ALL
+```
+
+### Verify Rolling Strategy
+
+```bash
+kubectl get deployment service-a service-b \
+  -o custom-columns='NAME:.metadata.name,READY:.status.readyReplicas,MAXSURGE:.spec.strategy.rollingUpdate.maxSurge,MAXUNAVAILABLE:.spec.strategy.rollingUpdate.maxUnavailable'
+```
+
+Validated configuration:
+
+```text
+NAME        READY   MAXSURGE   MAXUNAVAILABLE
+service-a   2       25%        0
+service-b   2       25%        0
+```
+
+---
+
+# STEP-07 — Kubernetes Horizontal Pod Autoscaling
+
+Horizontal Pod Autoscaling uses the Kubernetes `autoscaling/v2` API.
 
 ### HPA Configuration
 
-- Service A: minimum 2 replicas, maximum 6 replicas
-- Service B: minimum 2 replicas, maximum 6 replicas
-- CPU utilization target: 70%
-- Memory utilization target: 75%
-- Metrics Server provides CPU and memory metrics to the HPA
-- Scale-down stabilization window: 300 seconds to prevent rapid scaling fluctuations
+For both services:
 
-### Autoscaling Validation
+```text
+Minimum replicas: 2
+Maximum replicas: 6
+CPU target: 70%
+Memory target: 75%
+Scale-down stabilization: 300 seconds
+```
 
-Metrics Server was configured and verified using `kubectl top`.
+Metrics Server provides CPU and memory metrics.
 
-During load testing, Service A exceeded the 70% CPU target and the HPA increased the desired replica count up to 6.
+### Verify
 
-The local kind cluster contains two worker nodes with strict required pod anti-affinity. This limits the number of Service A replicas that can remain scheduled simultaneously. The original required anti-affinity configuration was retained after testing.
+```bash
+kubectl get hpa
+kubectl top pods
+kubectl top nodes
+```
+
+During load testing, Service A exceeded the CPU threshold and the HPA increased the desired replica count.
+
+### Local Cluster Limitation
+
+The kind cluster contains only two worker nodes.
+
+Because strict required pod anti-affinity prevents multiple replicas of the same service from being scheduled on the same worker, the local topology limits the maximum simultaneously schedulable replicas.
+
+The required anti-affinity configuration was intentionally retained.
 
 ### HPA Verification
 
-The following output verifies resource metrics and Horizontal Pod Autoscaler configuration for both microservices.
-
 ![Kubernetes HPA Verification](docs/screenshots/step-07-hpa-verification.png)
 
-## STEP-08 Kubernetes Ingress and TLS routing
+---
 
-- **Ingress controller**: ingress-nginx
-- **Host**: devops.local
-- **Paths**:
-	- `/api/v1` -> `service-a:8080`
-	- `/api/v2` -> `service-b:8000`
-- **TLS termination**: handled at the Ingress (TLS secret `devops-local-tls`)
-- **TLS secret**: `devops-local-tls` (created in `default` namespace for local testing)
-- **Certificate**: self-signed for `devops.local` (for assessment use only). Do NOT commit private keys to the repository.
-- **Local testing**: use `--resolve devops.local:443:127.0.0.1` with `curl`, or add `127.0.0.1 devops.local` to `/etc/hosts`.
-- **HTTPS validation commands**:
+# STEP-08 — Kubernetes Ingress and TLS
 
-```bash
-# Check ingress and TLS
-kubectl get ingress -A
-kubectl describe ingress devops-ingress -n default
+Ingress is implemented using ingress-nginx.
 
-# Verify ingress controller
-kubectl get pods -n ingress-nginx -o wide
-kubectl get svc -n ingress-nginx -o wide
+### Host
 
-# Test Service A and B over HTTPS (use --resolve or /etc/hosts)
-curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v1/health
-curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v1/users
-curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v2/health
-curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v2/orders
-
-# Inspect TLS certificate
-openssl s_client -connect 127.0.0.1:443 -servername devops.local </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -ext subjectAltName
+```text
+devops.local
 ```
 
-- **HTTP behavior (port 80)**: the Ingress controller redirects HTTP to HTTPS by default; expect a `308 Permanent Redirect` to the HTTPS URL.
+### Routing
+
+```text
+/api/v1 -> service-a:8080
+/api/v2 -> service-b:8000
+```
+
+### TLS
+
+TLS terminates at the Kubernetes Ingress.
+
+TLS Secret:
+
+```text
+devops-local-tls
+```
+
+The certificate is self-signed for local assessment validation.
+
+TLS private keys are not committed to Git.
+
+### Test Service A
+
+```bash
+curl -k -i \
+  --resolve devops.local:443:127.0.0.1 \
+  https://devops.local/api/v1/health
+```
+
+### Test Service B
+
+```bash
+curl -k -i \
+  --resolve devops.local:443:127.0.0.1 \
+  https://devops.local/api/v2/health
+```
+
+HTTP traffic on port 80 is redirected to HTTPS.
+
+Expected behavior:
+
+```text
+HTTP 308 Permanent Redirect
+```
 
 ### Ingress and TLS Verification
 
-The following output verifies HTTPS routing through the Kubernetes Ingress controller to both microservices.
-
 ![Kubernetes Ingress and TLS Verification](docs/screenshots/step-08-ingress-tls-verification.png)
 
-**Notes**:
-- TLS private keys and certificate files created for local testing must never be committed to the repository. The Kubernetes secret `devops-local-tls` is created in-cluster from local files.
+---
 
-## STEP-09 Kubernetes Zero-Trust NetworkPolicy
+# STEP-09 — Kubernetes Zero-Trust NetworkPolicy
 
-- **Model**: Zero-trust, explicit-allow (default deny) for application pods in the `default` namespace.
-- **Default deny**: `NetworkPolicy` objects deny ingress and egress to `app=service-a` and `app=service-b` pods by default.
-- **Explicit allows**:
-	- `ingress-nginx` controller pods are allowed to reach `service-a` on TCP/8080.
-	- `ingress-nginx` controller pods are allowed to reach `service-b` on TCP/8000.
-- **Effect**: Unrelated pods cannot directly access application services; legitimate HTTPS ingress remains functional.
-- **CNI note**: NetworkPolicy effects depend on the cluster CNI. This repository's tests detect if the CNI enforces NetworkPolicy; if the CNI does not, isolation cannot be guaranteed locally.
+The application layer uses a default-deny / explicit-allow network model.
+
+### Security Model
+
+```text
+Default:
+DENY ingress
+DENY egress
+```
+
+Explicit rules allow only required communication.
+
+### Allowed Traffic
+
+```text
+NGINX Ingress -> Service A : TCP/8080
+NGINX Ingress -> Service B : TCP/8000
+Service A     -> PostgreSQL: TCP/5432
+```
+
+Service B is not permitted to access PostgreSQL.
+
+Unrelated application pods cannot directly access Service A or Service B.
 
 ### NetworkPolicy Verification
 
-The following output verifies the Zero-Trust NetworkPolicy configuration and permitted application traffic.
-
 ![Kubernetes NetworkPolicy Verification](docs/screenshots/step-09-network-policy-verification.png)
 
-## STEP-10 PostgreSQL High Availability
+---
+
+# STEP-10 — PostgreSQL High Availability
 
 PostgreSQL HA is implemented using CloudNativePG.
 
-- Cluster: `postgres-ha`
-- Instances: 2
-- Primary/replica streaming replication
-- Dynamic PVCs: `1Gi` per instance
-- StorageClass: `standard`
-- Controlled failover verified
-- Data persisted across failover
-- Service A -> PostgreSQL TCP/5432 allowed
-- Service B -> PostgreSQL TCP/5432 blocked
-- Database credentials are stored in Kubernetes Secrets and are not committed to Git
+### Configuration
+
+```text
+Cluster: postgres-ha
+Instances: 2
+Storage: Dynamic PVC
+PVC Size: 1Gi per instance
+StorageClass: standard
+Replication: Streaming Replication
+```
+
+Validated capabilities:
+
+- Primary/replica architecture
+- Streaming replication
+- Controlled failover
+- Data persistence after failover
+- Dynamic persistent storage
+- Service A database access
+- Service B database isolation
+
+Credentials are stored using Kubernetes Secrets and are not committed to Git.
+
+### Verify PostgreSQL Cluster
+
+```bash
+kubectl get cluster postgres-ha
+```
+
+### Verify Primary and Replica
+
+```bash
+kubectl get pods \
+  -l cnpg.io/cluster=postgres-ha \
+  -L role,cnpg.io/instanceRole
+```
+
+Validated state:
+
+```text
+Cluster: postgres-ha
+Instances: 2
+Ready: 2
+Status: Cluster in healthy state
+
+postgres-ha-1 -> primary
+postgres-ha-2 -> replica
+```
 
 ### PostgreSQL HA Verification
 
-The following output verifies PostgreSQL high availability, replication, persistent storage, failover, and database network isolation.
-
 ![PostgreSQL HA Verification](docs/screenshots/step-10-postgresql-ha-verification.png)
 
-## STEP-11 MySQL and SQL Server Persistent Workloads
+---
 
-Cross-database persistence is implemented with Kubernetes StatefulSet manifests for MySQL and Microsoft SQL Server.
+# STEP-11 — MySQL and SQL Server Persistent Workloads
 
-- MySQL:
-	- StatefulSet: `mysql`
-	- Service: `mysql` on TCP/3306
-	- Image: `mysql:8.4`
-	- Persistent PVC: `mysql-data-mysql-0`, `1Gi`, StorageClass `standard`
-	- Credentials: injected from Kubernetes Secret `mysql-credentials`
-	- Persistence test: row in `step11_persistence_test` existed before and after deleting only `mysql-0`
-- SQL Server:
-	- StatefulSet: `mssql`
-	- Service: `mssql` on TCP/1433
-	- Image: `mcr.microsoft.com/mssql/server:2022-latest`
-	- Persistent PVC: `mssql-data-mssql-0`, `2Gi`, StorageClass `standard`
-	- SA credential: injected from Kubernetes Secret `sqlserver-credentials`
-	- Persistence test: row in `step11_persistence_test` existed before and after deleting only `mssql-0`
-- Storage:
-	- StorageClass: `standard`
-	- Provisioner: `rancher.io/local-path`
-	- Reclaim policy: `Delete`
-	- Volume binding mode: `WaitForFirstConsumer`
-	- Volume expansion: not advertised; `allowVolumeExpansion: true` is absent/false
-	- Production recommendation: use an expandable CSI-backed StorageClass for volume expansion support
-- Security:
-	- Generated database passwords exist only in Kubernetes Secrets
-	- No plaintext database passwords or Secret manifests are committed to Git
+## MySQL
+
+Configuration:
+
+```text
+StatefulSet: mysql
+Service: mysql
+Port: 3306
+Image: mysql:8.4
+PVC: mysql-data-mysql-0
+PVC Size: 1Gi
+StorageClass: standard
+```
+
+Credentials are injected using:
+
+```text
+mysql-credentials
+```
+
+Persistence was verified by creating database data, deleting the MySQL pod, and confirming the data remained after pod recreation.
+
+## Microsoft SQL Server
+
+Configuration:
+
+```text
+StatefulSet: mssql
+Service: mssql
+Port: 1433
+Image: mcr.microsoft.com/mssql/server:2022-latest
+PVC: mssql-data-mssql-0
+PVC Size: 2Gi
+StorageClass: standard
+```
+
+Credentials are injected using:
+
+```text
+sqlserver-credentials
+```
+
+Persistence was also validated across pod recreation.
+
+## Storage Configuration
+
+Local kind storage:
+
+```text
+StorageClass: standard
+Provisioner: rancher.io/local-path
+ReclaimPolicy: Delete
+VolumeBindingMode: WaitForFirstConsumer
+```
+
+### Volume Expansion Limitation
+
+The local-path StorageClass does not advertise volume expansion.
+
+For production environments, an expandable CSI-backed StorageClass should be used.
 
 ### Cross-Database Persistence Verification
 
-The following output verifies MySQL and SQL Server stateful workloads, persistent volume bindings, and database health.
-
 ![Cross-Database Persistence Verification](docs/screenshots/step-11-cross-database-persistence.png)
 
-## STEP-12 Automated Database Backup and S3-Compatible Storage
+---
 
-Automated database backups are configured as Kubernetes CronJobs scheduled daily at `02:00 UTC`.
+# STEP-12 — Automated Database Backup and S3-Compatible Storage
 
-- S3-compatible storage: local MinIO StatefulSet with persistent storage
-- Bucket: `db-backups`
-- PostgreSQL: `pg_dump` from `postgres-ha-rw`, compressed with gzip
-- MySQL: `mysqldump` from `mysql`, compressed with gzip
-- SQL Server: native SQL Server `.bak` backup created with `sqlcmd`, compressed with gzip
-- Upload client: MinIO `mc`
-- Credentials: database and MinIO credentials are injected from Kubernetes Secrets only
-- Manual backup Jobs were created from each CronJob and verified
-- Backup artifacts were uploaded to the `db-backups` bucket
+Automated backup CronJobs are configured for all three databases.
+
+### Schedule
+
+```text
+0 2 * * *
+```
+
+Timezone:
+
+```text
+Etc/UTC
+```
+
+This executes backups daily at:
+
+```text
+02:00 UTC
+```
+
+### Backup Tools
+
+| Database | Tool |
+|---|---|
+| PostgreSQL | `pg_dump` |
+| MySQL | `mysqldump` |
+| SQL Server | `sqlcmd` / native `.bak` |
+
+### Backup Flow
+
+```text
+PostgreSQL ─┐
+            │
+MySQL ──────┼──> Backup CronJobs
+            │          │
+SQL Server ─┘          v
+                    gzip
+                      │
+                      v
+                  MinIO S3
+                      │
+                      v
+                 db-backups
+```
+
+MinIO provides S3-compatible object storage.
+
+Bucket:
+
+```text
+db-backups
+```
+
+Database and MinIO credentials are injected using Kubernetes Secrets.
+
+### Verify CronJobs
+
+```bash
+kubectl get cronjob
+```
+
+Validated:
+
+```text
+NAME              SCHEDULE    TIMEZONE
+backup-mssql      0 2 * * *   Etc/UTC
+backup-mysql      0 2 * * *   Etc/UTC
+backup-postgres   0 2 * * *   Etc/UTC
+```
+
+### Verify Backup Jobs
+
+```bash
+kubectl get jobs
+```
+
+Validated manual backup Jobs:
+
+```text
+manual-backup-mssql            Complete
+manual-backup-mysql-final      Complete
+manual-backup-postgres-final   Complete
+```
+
+MinIO bucket creation:
+
+```text
+minio-create-db-backups-bucket   Complete
+```
 
 ### Automated Backup Verification
 
 ![Automated Database Backup Verification](docs/screenshots/step-12-backup-verification.png)
 
-## STEP-13 Centralized Logging with Fluent Bit and Loki
+---
 
-- Fluent Bit deployed as a cluster-wide DaemonSet
-- Loki deployed as the centralized log backend
-- Container stdout/stderr logs are collected from Kubernetes pods
-- JSON application logs are parsed and preserved
-- Kubernetes pod, namespace, container, and label metadata is enriched
-- Service A and Service B logs were successfully queried from Loki
-- Verified fields include `timestamp`, `level`, `service`, `request_id`, `method`, `path`, and `status_code`
-- `trace_id` and `caller` are preserved if emitted by applications, but are not currently emitted by the sample services
+# STEP-13 — Centralized Logging with Fluent Bit and Loki
+
+The logging pipeline collects Kubernetes container logs centrally.
+
+### Logging Architecture
+
+```text
+Service A stdout/stderr ─┐
+                         │
+Service B stdout/stderr ─┼──> Fluent Bit
+                         │        │
+Other Kubernetes Pods ───┘        v
+                                Loki
+```
+
+### Fluent Bit
+
+Fluent Bit runs as a Kubernetes DaemonSet.
+
+Responsibilities:
+
+- Collect container stdout/stderr
+- Parse JSON application logs
+- Add Kubernetes metadata
+- Add namespace metadata
+- Add pod/container metadata
+- Forward logs to Loki
+
+### Structured Application Fields
+
+Validated fields include:
+
+```text
+timestamp
+level
+service
+request_id
+method
+path
+status_code
+duration_ms
+message
+```
+
+`trace_id` and `caller` are preserved if emitted by the applications, although the current sample services do not emit those fields.
+
+### Verify Logging Components
+
+```bash
+kubectl get daemonset fluent-bit
+kubectl get deployment loki
+```
+
+Validated state:
+
+```text
+Fluent Bit:
+DESIRED: 3
+CURRENT: 3
+READY: 3
+AVAILABLE: 3
+
+Loki:
+READY: 1/1
+```
 
 ### Centralized Logging Verification
 
 ![Centralized Logging Verification](docs/screenshots/step-13-centralized-logging.png)
 
-## STEP-14 Prometheus Monitoring and Alertmanager
+---
 
-- Prometheus deployed for Kubernetes and ingress monitoring.
-- Alertmanager deployed and connected to Prometheus.
-- kube-state-metrics deployed for Kubernetes pod/container state metrics.
-- `HighHTTP5xxRate` alert detects HTTP 5xx rate above 5% for 5 minutes.
-- `PodCrashLoopBackOff` alert detects containers in CrashLoopBackOff.
-- `DatabasePVCUsageHigh` alert is configured for PVC usage above 85%.
-- HTTP 5xx validation reached 76.92% and the alert entered `pending` state.
-- CrashLoopBackOff was successfully detected using a temporary test pod.
-- The local kind cluster uses `rancher.io/local-path`; this environment did not expose `kubelet_volume_stats_used_bytes`, so the PVC threshold was not force-triggered locally.
-- Prometheus targets for ingress-nginx, kube-state-metrics, and kubelet were verified as `up`.
+# STEP-14 — Prometheus Monitoring and Alertmanager
+
+The Kubernetes monitoring stack includes:
+
+```text
+Prometheus
+Alertmanager
+kube-state-metrics
+Ingress metrics
+Kubelet metrics
+```
+
+### HighHTTP5xxRate
+
+Detects:
+
+```text
+HTTP 5xx rate > 5%
+Duration: 5 minutes
+```
+
+During validation, generated error traffic resulted in:
+
+```text
+HTTP 5xx rate: 76.92%
+Alert state: pending
+```
+
+### PodCrashLoopBackOff
+
+Detects containers entering:
+
+```text
+CrashLoopBackOff
+```
+
+A temporary test pod was used to validate the metric and alert condition.
+
+### DatabasePVCUsageHigh
+
+Configured threshold:
+
+```text
+PVC usage > 85%
+```
+
+The local kind environment uses:
+
+```text
+rancher.io/local-path
+```
+
+This environment did not expose:
+
+```text
+kubelet_volume_stats_used_bytes
+```
+
+Therefore, the PVC threshold was not artificially force-triggered.
+
+The alert rule remains configured.
+
+### Verify Monitoring Stack
+
+```bash
+kubectl get deployment \
+  prometheus \
+  alertmanager \
+  kube-state-metrics
+```
+
+Validated state:
+
+```text
+prometheus           1/1
+alertmanager         1/1
+kube-state-metrics   1/1
+```
 
 ### Monitoring and Alert Verification
 
 ![Monitoring and Alert Verification](docs/screenshots/step-14-prometheus-alerting.png)
 
-## STEP-15 CI/CD Pipeline
+---
 
-GitHub Actions validates Kubernetes manifests using kubeconform, builds Service A and Service B container images tagged with the Git commit SHA, and scans both images using Trivy for HIGH and CRITICAL vulnerabilities.
+# STEP-15 — GitHub Actions CI/CD Pipeline
 
-## STEP-16 GitOps Delivery Structure
+GitHub Actions provides automated CI validation.
 
-Kustomize is used to separate environment-specific deployment configuration.
+The pipeline performs:
 
-- `k8s/base/` contains reusable Kubernetes resources.
-- `k8s/overlays/staging/` renders staging resources with an `-staging` suffix and `environment: staging`.
-- `k8s/overlays/production/` renders production resources with an `-production` suffix and `environment: production`.
+1. Kubernetes manifest validation
+2. Container image builds
+3. Git SHA image tagging
+4. Trivy vulnerability scanning
 
-Validation:
+### Manifest Validation
+
+Kubernetes manifests are validated using:
+
+```text
+kubeconform
+```
+
+### Container Security
+
+Both images are scanned using:
+
+```text
+Trivy
+```
+
+Severity scope:
+
+```text
+HIGH
+CRITICAL
+```
+
+### Image Tagging
+
+Container images are tagged using the Git commit SHA to provide traceability between source code and container builds.
+
+---
+
+# STEP-16 — Kustomize Environment Overlays
+
+Kustomize separates reusable base manifests from environment-specific configuration.
+
+### Structure
+
+```text
+k8s/
+├── base/
+│   ├── service-a/
+│   ├── service-b/
+│   ├── ingress/
+│   └── network-policies/
+│
+└── overlays/
+    ├── staging/
+    └── production/
+```
+
+### Staging
+
+Staging resources use:
+
+```text
+environment: staging
+-staging name suffix
+```
+
+### Production
+
+Production resources use:
+
+```text
+environment: production
+-production name suffix
+```
+
+### Validate Staging
 
 ```bash
 kubectl kustomize k8s/overlays/staging
+```
+
+### Validate Production
+
+```bash
 kubectl kustomize k8s/overlays/production
 ```
 
+---
 
-## One-Click Local Setup
+# STEP-17 — One-Click Deployment Automation
 
-The project includes a Makefile for reproducible local deployment.
+The repository contains a Makefile for repeatable local deployment and verification.
+
+### Available Targets
 
 ```bash
+make help
+make cluster
+make apps
+make ingress
+make network
+make databases
+make logging
+make monitoring
+make verify
 make all
+make bootstrap
+```
+
+### Bootstrap
+
+```bash
+make bootstrap
+```
+
+The automation creates or reuses the configured kind cluster and applies the configured:
+
+```text
+Applications
+Ingress resources
+NetworkPolicies
+Database workloads
+Logging stack
+Monitoring stack
+```
+
+It then runs platform verification.
+
+## Bootstrap Prerequisites
+
+Some supporting components and runtime secrets are intentionally not committed to Git.
+
+A fresh environment must have the required Kubernetes controllers/operators and generated runtime Secrets available for workloads that depend on them.
+
+This includes components such as:
+
+- ingress-nginx
+- Metrics Server
+- CloudNativePG operator
+- required database Secrets
+- MinIO credentials
+- TLS Secret
+
+No plaintext credentials or TLS private keys are stored in Git.
+
+---
+
+# Final Verification Runbook
+
+The following commands provide a quick operational verification of the complete platform.
+
+---
+
+## 1. Overall Platform Health
+
+```bash
+make verify
+```
+
+Validated cluster state:
+
+```text
+Kubernetes Nodes:       3 Ready
+
+Service A:              2/2
+Service B:              2/2
+
+MySQL:                  1/1
+SQL Server:             1/1
+MinIO:                  1/1
+
+Prometheus:             1/1
+Alertmanager:           1/1
+kube-state-metrics:     1/1
+Loki:                   1/1
+
+Fluent Bit:             3/3
+```
+
+Ingress:
+
+```text
+Host: devops.local
+Ports: 80, 443
+TLS: Enabled
+```
+
+---
+
+## 2. PostgreSQL HA Verification
+
+```bash
+kubectl get cluster postgres-ha
+```
+
+Validated:
+
+```text
+NAME          INSTANCES   READY   STATUS
+postgres-ha   2           2       Cluster in healthy state
+```
+
+Check primary and replica:
+
+```bash
+kubectl get pods \
+  -l cnpg.io/cluster=postgres-ha \
+  -L role,cnpg.io/instanceRole
+```
+
+Validated:
+
+```text
+postgres-ha-1   primary
+postgres-ha-2   replica
+```
+
+---
+
+## 3. Centralized Logging Verification
+
+```bash
+kubectl get daemonset fluent-bit
+kubectl get deployment loki
+```
+
+Validated:
+
+```text
+Fluent Bit: 3/3 Ready
+Loki:       1/1 Ready
+```
+
+---
+
+## 4. Monitoring Verification
+
+```bash
+kubectl get deployment \
+  prometheus \
+  alertmanager \
+  kube-state-metrics
+```
+
+Validated:
+
+```text
+Prometheus:           1/1
+Alertmanager:         1/1
+kube-state-metrics:   1/1
+```
+
+---
+
+## 5. Backup Verification
+
+```bash
+kubectl get cronjob
+kubectl get jobs
+```
+
+Validated CronJobs:
+
+```text
+backup-postgres   0 2 * * *   Etc/UTC
+backup-mysql      0 2 * * *   Etc/UTC
+backup-mssql      0 2 * * *   Etc/UTC
+```
+
+Validated manual backup Jobs:
+
+```text
+manual-backup-postgres-final   Complete
+manual-backup-mysql-final      Complete
+manual-backup-mssql            Complete
+```
+
+---
+
+## 6. Security Verification
+
+Check Service A:
+
+```bash
+kubectl get deployment service-a \
+  -o jsonpath='{.spec.template.spec.containers[0].securityContext}{"\n"}'
+```
+
+Check Service B:
+
+```bash
+kubectl get deployment service-b \
+  -o jsonpath='{.spec.template.spec.containers[0].securityContext}{"\n"}'
+```
+
+Expected:
+
+```json
+{
+  "allowPrivilegeEscalation": false,
+  "capabilities": {
+    "drop": [
+      "ALL"
+    ]
+  },
+  "readOnlyRootFilesystem": true,
+  "runAsNonRoot": true,
+  "runAsUser": 10001
+}
+```
+
+---
+
+## 7. Rolling Update Verification
+
+```bash
+kubectl get deployment service-a service-b \
+  -o custom-columns='NAME:.metadata.name,READY:.status.readyReplicas,MAXSURGE:.spec.strategy.rollingUpdate.maxSurge,MAXUNAVAILABLE:.spec.strategy.rollingUpdate.maxUnavailable'
+```
+
+Validated:
+
+```text
+NAME        READY   MAXSURGE   MAXUNAVAILABLE
+service-a   2       25%        0
+service-b   2       25%        0
+```
+
+### Local Rolling-Update Capacity Note
+
+The local environment has two worker nodes with strict required pod anti-affinity.
+
+A zero-unavailable rollout (`maxUnavailable: 0`) can require an additional scheduling slot while replacing existing replicas.
+
+This is a local topology constraint rather than an application failure. A production cluster with additional worker capacity would provide the required scheduling headroom.
+
+---
+
+# Security Controls
+
+The platform implements multiple security layers.
+
+### Container Security
+
+```text
+Non-root UID: 10001
+Read-only root filesystem
+Privilege escalation disabled
+All Linux capabilities dropped
+```
+
+### Kubernetes Security
+
+```text
+Zero-Trust NetworkPolicies
+Default deny
+Explicit ingress rules
+Restricted database connectivity
+Pod anti-affinity
+```
+
+### Secrets
+
+Sensitive credentials are externalized using Kubernetes Secrets.
+
+The repository does not intentionally store:
+
+```text
+Database passwords
+MinIO passwords
+TLS private keys
+.env credential files
+```
+
+### CI Security
+
+GitHub Actions runs Trivy vulnerability scanning for:
+
+```text
+HIGH
+CRITICAL
+```
+
+container vulnerabilities.
+
+---
+
+# Disaster Recovery
+
+The project provides multiple data-protection mechanisms.
+
+### PostgreSQL
+
+```text
+CloudNativePG
+Primary + Replica
+Streaming replication
+Controlled failover
+Persistent PVCs
+```
+
+### Database Backups
+
+```text
+Daily schedule: 02:00 UTC
+
+PostgreSQL -> pg_dump
+MySQL      -> mysqldump
+SQL Server -> sqlcmd/native backup
+
+Compression -> gzip
+Storage     -> MinIO / S3-compatible object storage
+```
+
+---
+
+# Observability
+
+The observability architecture contains both logs and metrics.
+
+### Logging
+
+```text
+Kubernetes Pods
+      |
+      v
+ Fluent Bit
+      |
+      v
+    Loki
+```
+
+### Monitoring
+
+```text
+Ingress Metrics ───────┐
+                       |
+Kubernetes Metrics ────┼──> Prometheus
+                       |         |
+Kubelet Metrics ───────┘         v
+                             Alertmanager
+```
+
+Configured alert scenarios:
+
+```text
+HTTP 5xx > 5% for 5 minutes
+Database PVC > 85%
+CrashLoopBackOff
+```
+
+---
+
+# CI/CD Flow
+
+```text
+Developer
+    |
+    v
+GitHub Repository
+    |
+    v
+GitHub Actions
+    |
+    +--> kubeconform
+    |
+    +--> Build Service A
+    |
+    +--> Build Service B
+    |
+    +--> SHA Image Tagging
+    |
+    +--> Trivy Scan
+    |
+    v
+Kustomize
+    |
+    +--> Staging
+    |
+    └--> Production
+```
+
+---
+
+# Repository Structure
+
+```text
+.
+├── .github/
+│   └── workflows/
+│
+├── backup/
+│
+├── database/
+│   ├── postgres/
+│   ├── mysql/
+│   └── mssql/
+│
+├── docker/
+│   ├── service-a/
+│   └── service-b/
+│
+├── k8s/
+│   ├── base/
+│   │   ├── service-a/
+│   │   ├── service-b/
+│   │   ├── ingress/
+│   │   └── network-policies/
+│   │
+│   └── overlays/
+│       ├── staging/
+│       └── production/
+│
+├── monitoring/
+│   ├── logging/
+│   └── prometheus/
+│
+├── docs/
+│   ├── architecture/
+│   │   └── devops-architecture-overview.png
+│   │
+│   └── screenshots/
+│       ├── step-05-kind-cluster.png
+│       ├── step-06-kubernetes-deployment.png
+│       ├── step-07-hpa-verification.png
+│       ├── step-08-ingress-tls-verification.png
+│       ├── step-09-network-policy-verification.png
+│       ├── step-10-postgresql-ha-verification.png
+│       ├── step-11-cross-database-persistence.png
+│       ├── step-12-backup-verification.png
+│       ├── step-13-centralized-logging.png
+│       └── step-14-prometheus-alerting.png
+│
+├── Makefile
+└── README.md
+```
+
+---
+
+# Assessment Coverage
+
+This repository demonstrates:
+
+- Multi-stage Docker builds
+- Minimal runtime images
+- Docker layer caching
+- Non-root containers
+- Kubernetes securityContext
+- Read-only root filesystems
+- Linux capability dropping
+- Kubernetes Deployments
+- Kubernetes Services
+- Resource requests and limits
+- Readiness probes
+- Liveness probes
+- Rolling updates
+- Pod anti-affinity
+- Horizontal Pod Autoscaling
+- CPU-based scaling
+- Memory-based scaling
+- NGINX Ingress
+- TLS termination
+- Host/path routing
+- Zero-Trust NetworkPolicies
+- PostgreSQL HA
+- Streaming replication
+- PostgreSQL failover
+- MySQL StatefulSet
+- Microsoft SQL Server StatefulSet
+- Persistent volumes
+- Dynamic storage
+- Kubernetes Secrets
+- Automated database backups
+- S3-compatible object storage
+- gzip backup compression
+- Fluent Bit
+- Loki
+- Structured JSON logging
+- Kubernetes metadata enrichment
+- Prometheus
+- kube-state-metrics
+- Alertmanager
+- HTTP 5xx alerting
+- PVC usage alerting
+- CrashLoopBackOff alerting
+- GitHub Actions
+- kubeconform
+- Trivy vulnerability scanning
+- SHA-tagged image builds
+- Kustomize staging overlay
+- Kustomize production overlay
+- Makefile deployment automation
+- Operational verification runbook
+
+---
+
+# Known Local Environment Limitations
+
+This project intentionally documents local-environment constraints instead of hiding or simulating unsupported behavior.
+
+### PVC Metrics
+
+The kind `rancher.io/local-path` environment did not expose:
+
+```text
+kubelet_volume_stats_used_bytes
+```
+
+The PVC >85% alert rule is configured but was not artificially force-triggered.
+
+### Volume Expansion
+
+The local-path StorageClass does not advertise volume expansion.
+
+A production environment should use an expandable CSI-backed StorageClass.
+
+### HPA and Anti-Affinity
+
+The local cluster has only two worker nodes.
+
+Required pod anti-affinity therefore limits the maximum number of simultaneously schedulable replicas for each application.
+
+### Rolling Updates
+
+Strict pod anti-affinity combined with:
+
+```text
+maxSurge: 25%
+maxUnavailable: 0
+```
+
+requires additional scheduling capacity during a rolling replacement.
+
+Production clusters should provide sufficient worker-node capacity for zero-unavailable rollouts.
+
+---
+
+# Final Status
+
+The complete DevOps assessment stack has been implemented and locally validated on the `devops-assessment` Kubernetes cluster.
+
+The final environment includes:
+
+```text
+3 Kubernetes Nodes
+
+2 Service A Pods
+2 Service B Pods
+
+2 PostgreSQL HA Instances
+1 MySQL Instance
+1 SQL Server Instance
+
+1 MinIO Instance
+
+3 Fluent Bit Pods
+1 Loki Instance
+
+1 Prometheus Instance
+1 Alertmanager Instance
+1 kube-state-metrics Instance
+
+NGINX Ingress with TLS
+Zero-Trust NetworkPolicies
+Horizontal Pod Autoscaling
+Automated Database Backups
+GitHub Actions CI/CD
+Kustomize Environment Overlays
+Hardened Kubernetes Workloads
+Makefile Deployment Automation
+```
+
+All major assessment components have been implemented, tested, documented, and verified.
