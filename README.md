@@ -249,3 +249,20 @@ The following output verifies HTTPS routing through the Kubernetes Ingress contr
 
 **Notes**:
 - TLS private keys and certificate files created for local testing must never be committed to the repository. The Kubernetes secret `devops-local-tls` is created in-cluster from local files.
+
+## STEP-09 Kubernetes Zero-Trust NetworkPolicy
+
+- **Model**: Zero-trust, explicit-allow (default deny) for application pods in the `default` namespace.
+- **Default deny**: `NetworkPolicy` objects deny ingress and egress to `app=service-a` and `app=service-b` pods by default.
+- **Explicit allows**:
+	- `ingress-nginx` controller pods are allowed to reach `service-a` on TCP/8080.
+	- `ingress-nginx` controller pods are allowed to reach `service-b` on TCP/8000.
+- **Effect**: Unrelated pods cannot directly access application services; legitimate HTTPS ingress remains functional.
+- **CNI note**: NetworkPolicy effects depend on the cluster CNI. This repository's tests detect if the CNI enforces NetworkPolicy; if the CNI does not, isolation cannot be guaranteed locally.
+
+### NetworkPolicy Verification
+
+The following output verifies the Zero-Trust NetworkPolicy configuration and permitted application traffic.
+
+![Kubernetes NetworkPolicy Verification](docs/screenshots/step-09-network-policy-verification.png)
+
