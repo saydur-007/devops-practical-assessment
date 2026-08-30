@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-internal
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: postgres-ha
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: postgres-ha
+      ports:
+        - protocol: TCP
+          port: 5432

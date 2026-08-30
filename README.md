@@ -15,6 +15,9 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-05 Local Kubernetes cluster setup
 - [x] STEP-06 Kubernetes application deployment
 - [x] STEP-07 Kubernetes horizontal pod autoscaling
+- [x] STEP-08 Kubernetes Ingress and TLS routing
+- [x] STEP-09 Kubernetes Zero-Trust NetworkPolicy
+- [x] STEP-10 PostgreSQL High Availability
 
 ## Service A (Node.js + Express)
 
@@ -266,3 +269,23 @@ The following output verifies the Zero-Trust NetworkPolicy configuration and per
 
 ![Kubernetes NetworkPolicy Verification](docs/screenshots/step-09-network-policy-verification.png)
 
+## STEP-10 PostgreSQL High Availability
+
+PostgreSQL HA is implemented using CloudNativePG.
+
+- Cluster: `postgres-ha`
+- Instances: 2
+- Primary/replica streaming replication
+- Dynamic PVCs: `1Gi` per instance
+- StorageClass: `standard`
+- Controlled failover verified
+- Data persisted across failover
+- Service A -> PostgreSQL TCP/5432 allowed
+- Service B -> PostgreSQL TCP/5432 blocked
+- Database credentials are stored in Kubernetes Secrets and are not committed to Git
+
+### PostgreSQL HA Verification
+
+The following output verifies PostgreSQL high availability, replication, persistent storage, failover, and database network isolation.
+
+![PostgreSQL HA Verification](docs/screenshots/step-10-postgresql-ha-verification.png)
