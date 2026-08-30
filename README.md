@@ -20,6 +20,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-10 PostgreSQL High Availability
 - [x] STEP-11 MySQL and SQL Server Persistent Workloads
 - [x] STEP-12 Automated Database Backup and S3-Compatible Storage
+- [x] STEP-13 Centralized Logging with Fluent Bit and Loki
 
 ## Service A (Node.js + Express)
 
@@ -344,3 +345,18 @@ Automated database backups are configured as Kubernetes CronJobs scheduled daily
 ### Automated Backup Verification
 
 ![Automated Database Backup Verification](docs/screenshots/step-12-backup-verification.png)
+
+## STEP-13 Centralized Logging with Fluent Bit and Loki
+
+- Fluent Bit deployed as a cluster-wide DaemonSet
+- Loki deployed as the centralized log backend
+- Container stdout/stderr logs are collected from Kubernetes pods
+- JSON application logs are parsed and preserved
+- Kubernetes pod, namespace, container, and label metadata is enriched
+- Service A and Service B logs were successfully queried from Loki
+- Verified fields include `timestamp`, `level`, `service`, `request_id`, `method`, `path`, and `status_code`
+- `trace_id` and `caller` are preserved if emitted by applications, but are not currently emitted by the sample services
+
+### Centralized Logging Verification
+
+![Centralized Logging Verification](docs/screenshots/step-13-centralized-logging.png)
