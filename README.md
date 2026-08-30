@@ -382,3 +382,26 @@ Automated database backups are configured as Kubernetes CronJobs scheduled daily
 ## STEP-15 CI/CD Pipeline
 
 GitHub Actions validates Kubernetes manifests using kubeconform, builds Service A and Service B container images tagged with the Git commit SHA, and scans both images using Trivy for HIGH and CRITICAL vulnerabilities.
+
+## STEP-16 GitOps Delivery Structure
+
+Kustomize is used to separate environment-specific deployment configuration.
+
+- `k8s/base/` contains reusable Kubernetes resources.
+- `k8s/overlays/staging/` renders staging resources with an `-staging` suffix and `environment: staging`.
+- `k8s/overlays/production/` renders production resources with an `-production` suffix and `environment: production`.
+
+Validation:
+
+```bash
+kubectl kustomize k8s/overlays/staging
+kubectl kustomize k8s/overlays/production
+```
+
+
+## One-Click Local Setup
+
+The project includes a Makefile for reproducible local deployment.
+
+```bash
+make all
