@@ -12,6 +12,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-02 Service A implementation
 - [x] STEP-03 Service B implementation
 - [x] STEP-04 Docker containerization
+ - [x] STEP-05 Local Kubernetes cluster setup
 
 ## Service A (Node.js + Express)
 
@@ -73,6 +74,33 @@ This step adds multi-stage Dockerfiles for both services and follows production-
 Service container ports:
 - Service A: `8080`
 - Service B: `8000`
+
+## STEP-05 Local Kubernetes cluster (kind)
+
+- Cluster name: `devops-assessment`
+- Node topology: 1 control-plane, 2 workers
+- Host port mappings configured on control-plane node: host `80` -> container `80`, host `443` -> container `443`
+- The cluster is local (kind) and intended for assessment validation; services are not deployed by default.
+
+Create the cluster:
+
+```bash
+kind create cluster --name devops-assessment --config k8s/kind-config.yaml
+```
+
+Delete the cluster:
+
+```bash
+kind delete cluster --name devops-assessment
+```
+
+Validation commands:
+
+```bash
+kubectl cluster-info --context kind-devops-assessment
+kubectl get nodes -o wide
+kubectl config current-context
+```
 
 Service B runtime note:
 - Distroless Python (`gcr.io/distroless/python3:3.12`) was considered and preferred for minimal attack surface.
