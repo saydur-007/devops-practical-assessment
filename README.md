@@ -206,3 +206,46 @@ The local kind cluster contains two worker nodes with strict required pod anti-a
 The following output verifies resource metrics and Horizontal Pod Autoscaler configuration for both microservices.
 
 ![Kubernetes HPA Verification](docs/screenshots/step-07-hpa-verification.png)
+
+## STEP-08 Kubernetes Ingress and TLS routing
+
+- **Ingress controller**: ingress-nginx
+- **Host**: devops.local
+- **Paths**:
+	- `/api/v1` -> `service-a:8080`
+	- `/api/v2` -> `service-b:8000`
+- **TLS termination**: handled at the Ingress (TLS secret `devops-local-tls`)
+- **TLS secret**: `devops-local-tls` (created in `default` namespace for local testing)
+- **Certificate**: self-signed for `devops.local` (for assessment use only). Do NOT commit private keys to the repository.
+- **Local testing**: use `--resolve devops.local:443:127.0.0.1` with `curl`, or add `127.0.0.1 devops.local` to `/etc/hosts`.
+- **HTTPS validation commands**:
+
+```bash
+# Check ingress and TLS
+kubectl get ingress -A
+kubectl describe ingress devops-ingress -n default
+
+# Verify ingress controller
+kubectl get pods -n ingress-nginx -o wide
+kubectl get svc -n ingress-nginx -o wide
+
+# Test Service A and B over HTTPS (use --resolve or /etc/hosts)
+curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v1/health
+curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v1/users
+curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v2/health
+curl -k -i --resolve devops.local:443:127.0.0.1 https://devops.local/api/v2/orders
+
+# Inspect TLS certificate
+openssl s_client -connect 127.0.0.1:443 -servername devops.local </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -ext subjectAltName
+```
+
+- **HTTP behavior (port 80)**: the Ingress controller redirects HTTP to HTTPS by default; expect a `308 Permanent Redirect` to the HTTPS URL.
+
+### Ingress and TLS Verification
+
+The following output verifies HTTPS routing through the Kubernetes Ingress controller to both microservices.
+
+![Kubernetes Ingress and TLS Verification](docs/screenshots/step-08-ingress-tls-verification.png)
+
+**Notes**:
+- TLS private keys and certificate files created for local testing must never be committed to the repository. The Kubernetes secret `devops-local-tls` is created in-cluster from local files.
