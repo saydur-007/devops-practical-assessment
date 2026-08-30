@@ -12,7 +12,8 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-02 Service A implementation
 - [x] STEP-03 Service B implementation
 - [x] STEP-04 Docker containerization
- - [x] STEP-05 Local Kubernetes cluster setup
+- [x] STEP-05 Local Kubernetes cluster setup
+- [x] STEP-06 Kubernetes application deployment
 
 ## Service A (Node.js + Express)
 
@@ -108,6 +109,45 @@ The following screenshot shows the cluster verification output (`kubectl get nod
 
 ![3-Node Kind Cluster Verification](docs/screenshots/step-05-kind-cluster.png)
 
+## STEP-06 Kubernetes application deployment
+
+- Namespace: `default`
+- Deployments: `service-a`, `service-b`
+- Replicas: 2 each
+- Resource requests: `cpu: 100m`, `memory: 128Mi`
+- Resource limits: `cpu: 500m`, `memory: 256Mi`
+- Service A health probe: `/api/v1/health`
+- Service B health probe: `/api/v2/health`
+- Rolling update: `maxSurge: 25%`, `maxUnavailable: 0`
+- Pod anti-affinity: `requiredDuringSchedulingIgnoredDuringExecution`
+- Topology key: `kubernetes.io/hostname`
+
+Apply manifests (from repo root):
+
+```bash
+kubectl apply -f k8s/base/service-a/deployment.yaml
+kubectl apply -f k8s/base/service-a/service.yaml
+kubectl apply -f k8s/base/service-b/deployment.yaml
+kubectl apply -f k8s/base/service-b/service.yaml
+```
+
+Verify deployments and pods:
+
+```bash
+kubectl get deployments
+kubectl get pods -o wide
+kubectl get svc
+```
+
+Port-forward for testing (run in separate terminals):
+
+```bash
+# Service A
+kubectl port-forward svc/service-a 8080:8080 --address 127.0.0.1
+# Service B
+kubectl port-forward svc/service-b 8000:8000 --address 127.0.0.1
+```
+
 Service B runtime note:
 - Distroless Python (`gcr.io/distroless/python3:3.12`) was considered and preferred for minimal attack surface.
 - In environments where the distroless manifest is not available, this repository falls back to `python:3.12-slim` as a minimal, compatible runtime. Build tools and dependencies remain isolated in the builder stage at `/install` and are copied into the final image only as needed.
@@ -133,5 +173,8 @@ Multi-stage build explanation:
 Build vs runtime image:
 - Builder: contains package managers and build tools (`npm`, `pip`) and the full dependency installation step.
 - Runtime: contains only the runtime interpreter and the application artifacts copied from the builder stage; runs as non-root `UID 10001` and exposes the runtime port.
+### Deployment Verification
 
+The following output verifies that both microservices are running with two healthy replicas distributed across the Kubernetes worker nodes.
 
+![Kubernetes Application Deployment](docs/screenshots/step-06-kubernetes-deployment.png)
