@@ -1,0 +1,250 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: default
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: default
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: default
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/rules/alerts.yml
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+                - alertmanager:9093
+
+    scrape_configs:
+
+      # -------------------------------------------------------
+      # kube-state-metrics
+      # Used for pod/container state metrics such as
+      # CrashLoopBackOff detection.
+      # -------------------------------------------------------
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets:
+              - kube-state-metrics:8080
+
+      # -------------------------------------------------------
+      # ingress-nginx metrics
+      #
+      # Important:
+      # The normal ingress-nginx Service only exposes 80/443,
+      # not the controller metrics port 10254.
+      #
+      # Therefore Prometheus discovers the controller pod and
+      # scrapes its POD IP directly on TCP/10254.
+      # -------------------------------------------------------
+      - job_name: ingress-nginx
+        kubernetes_sd_configs:
+          - role: pod
+
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_namespace
+            action: keep
+            regex: ingress-nginx
+
+          - source_labels:
+              - __meta_kubernetes_pod_label_app_kubernetes_io_component
+            action: keep
+            regex: controller
+
+          - source_labels:
+              - __meta_kubernetes_pod_ip
+            target_label: __address__
+            replacement: ${1}:10254
+
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+
+      # -------------------------------------------------------
+      # kubelet metrics through Kubernetes API server proxy
+      #
+      # Direct scraping of nodeIP:10250 returned HTTP 403.
+      #
+      # Prometheus therefore connects to:
+      #
+      # kubernetes.default.svc:443
+      #
+      # and requests:
+      #
+      # /api/v1/nodes/<node>/proxy/metrics
+      #
+      # RBAC includes nodes/proxy.
+      # -------------------------------------------------------
+      - job_name: kubelet
+        scheme: https
+
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+        kubernetes_sd_configs:
+          - role: node
+
+        relabel_configs:
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+
+          - source_labels:
+              - __meta_kubernetes_node_name
+            target_label: __metrics_path__
+            regex: (.+)
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+
+          - source_labels:
+              - __meta_kubernetes_node_name
+            target_label: node
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: default
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: prometheus
+
+  template:
+    metadata:
+      labels:
+        app: prometheus
+
+    spec:
+      serviceAccountName: prometheus
+
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.5.0
+
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 15
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+              readOnly: true
+
+            - name: rules
+              mountPath: /etc/prometheus/rules
+              readOnly: true
+
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+
+        - name: rules
+          configMap:
+            name: prometheus-alert-rules
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: default
+  labels:
+    app: prometheus
+spec:
+  type: ClusterIP
+
+  selector:
+    app: prometheus
+
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+      protocol: TCP

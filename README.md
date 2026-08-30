@@ -21,6 +21,7 @@ This repository contains two simple services to exercise containerization, obser
 - [x] STEP-11 MySQL and SQL Server Persistent Workloads
 - [x] STEP-12 Automated Database Backup and S3-Compatible Storage
 - [x] STEP-13 Centralized Logging with Fluent Bit and Loki
+- [x] STEP-14 Prometheus monitoring and alerting
 
 ## Service A (Node.js + Express)
 
@@ -360,3 +361,20 @@ Automated database backups are configured as Kubernetes CronJobs scheduled daily
 ### Centralized Logging Verification
 
 ![Centralized Logging Verification](docs/screenshots/step-13-centralized-logging.png)
+
+## STEP-14 Prometheus Monitoring and Alertmanager
+
+- Prometheus deployed for Kubernetes and ingress monitoring.
+- Alertmanager deployed and connected to Prometheus.
+- kube-state-metrics deployed for Kubernetes pod/container state metrics.
+- `HighHTTP5xxRate` alert detects HTTP 5xx rate above 5% for 5 minutes.
+- `PodCrashLoopBackOff` alert detects containers in CrashLoopBackOff.
+- `DatabasePVCUsageHigh` alert is configured for PVC usage above 85%.
+- HTTP 5xx validation reached 76.92% and the alert entered `pending` state.
+- CrashLoopBackOff was successfully detected using a temporary test pod.
+- The local kind cluster uses `rancher.io/local-path`; this environment did not expose `kubelet_volume_stats_used_bytes`, so the PVC threshold was not force-triggered locally.
+- Prometheus targets for ingress-nginx, kube-state-metrics, and kubelet were verified as `up`.
+
+### Monitoring and Alert Verification
+
+![Monitoring and Alert Verification](docs/screenshots/step-14-prometheus-alerting.png)
